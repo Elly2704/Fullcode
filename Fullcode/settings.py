@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'shop.apps.ShopConfig'
+    'shop.apps.ShopConfig',
+    'cart.apps.CartConfig',
+    'mathfilters',
 ]
 
 MIDDLEWARE = [
@@ -67,6 +69,8 @@ TEMPLATES = [
 
                 #Custom context processors
                 'shop.context_processors.categories',
+                'cart.context_processors.cart',
+
             ],
         },
     },
