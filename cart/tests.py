@@ -14,7 +14,7 @@ class CartViewTest(TestCase):
 
     def setUp(self):
         self.client = Client()
-        self.factory = RequestFactory().get(reverse('cart:cart-view'))
+        self.factory = RequestFactory().get(reverse('cart:cart_view'))
         self.middleware = SessionMiddleware(self.factory)
         self.middleware.process_request(self.factory)
         self.factory.session.save()
@@ -23,7 +23,7 @@ class CartViewTest(TestCase):
         request = self.factory
         responce = cart_view(request)
         self.assertEqual(responce.status_code, 200)
-        self.assertTemplateUsed(self.client.get(reverse('cart:cart-view')), 'cart/cart-view.html')
+        self.assertTemplateUsed(self.client.get(reverse('cart:cart_view')), 'cart/cart-view.html')
 
 
 class CartAddViewTestCase(TestCase):
@@ -31,7 +31,7 @@ class CartAddViewTestCase(TestCase):
     def setUp(self):
         self.category = Category.objects.create(name='Category 1')
         self.product = ProductProxy.objects.create(title='Example Product', price=10.0, category=self.category)
-        self.factory = RequestFactory().post(reverse('cart:add-to-cart'), {
+        self.factory = RequestFactory().post(reverse('cart:cart_add'), {
             'action': 'post',
             'product_id': self.product.id,
             'product_qty': 2,
@@ -55,7 +55,7 @@ class CartDeleteViewTestCase(TestCase):
         self.category = Category.objects.create(name='Category 1')
         self.product = ProductProxy.objects.create(title='Example Product', price=10.0, category=self.category)
 
-        self.factory = RequestFactory().post(reverse('cart:delete-to-cart'), {
+        self.factory = RequestFactory().post(reverse('cart:cart_delete'), {
             'action': 'post',
             'product_id': self.product.id,
         })
@@ -76,12 +76,12 @@ class CartUpdateViewTestCase(TestCase):
     def setUp(self):
         self.category = Category.objects.create(name='Category 1')
         self.product = ProductProxy.objects.create(title='Example Product', price=10.0, category=self.category)
-        self.factory = RequestFactory().post(reverse('cart:add-to-cart'), {
+        self.factory = RequestFactory().post(reverse('cart:cart_add'), {
             'action': 'post',
             'product_id': self.product.id,
             'product_qty': 2,
         })
-        self.factory = RequestFactory().post(reverse('cart:update-to-cart'), {
+        self.factory = RequestFactory().post(reverse('cart:cart_update'), {
             'action': 'post',
             'product_id': self.product.id,
             'product_qty': 5,
