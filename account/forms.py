@@ -20,7 +20,7 @@ class UserCreateForm(UserCreationForm):
         }
 
         def __init__(self, *args, **kwargs):
-            super(UserCreateForm, self).__init__(*args, **kwargs)
+            super(UserCreateForm,self).__init__(*args, **kwargs)
 
             self.fields['email'].label = 'Your Email Address'
             self.fields['email'].required = True
@@ -28,7 +28,7 @@ class UserCreateForm(UserCreationForm):
             self.fields['password1'].help_text = ''
 
         def clean_email(self):
-            email = self.cleaned_data.get['email'].lower()
+            email = self.cleaned_data.get('email').lower()
             if User.objects.filter(email=email).exists():
                 raise forms.ValidationError('This email address is already registered.')
             return email
@@ -51,3 +51,11 @@ class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['username', 'email']
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email').lower()
+
+        if User.objects.filter(email=email).exclude(id=self.instance.id).exists():
+            raise forms.ValidationError('This email address is already registered.')
+
+        return email
