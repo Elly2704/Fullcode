@@ -11,12 +11,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.templatetags.static import static
 from django.urls import reverse
-from yookassa import Configuration, Payment
+
 
 from cart.cart import Cart
-
 from .forms import ShippingAddressForm
 from .models import Order, OrderItem, ShippingAddress
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.api_version = settings.STRIPE_API_VERSION
 
 
 @login_required(login_url='account:login')
@@ -47,7 +49,7 @@ def checkout(request):
 
 
 def complete_order(request):
-    if request.POST.get('action') == 'payment':
+    if request.method == 'POST':
         name = request.POST.get('name')
         email = request.POST.get('email')
         apartment_address = request.POST.get('apartment_address')
@@ -70,6 +72,13 @@ def complete_order(request):
                 'zip': zip
             }
         )
+        session_data = {
+            'mode': 'payment',
+            'success_url': request.build_absolute_uri(reverse('payment:payment_success')),
+            'cancel_url': request.build_absolute_uri(reverse('payment:payment_fail')),
+            'line_items': []
+
+        }
         if request.user.is_authenticated():
             order = Order.objects.create(user=request.user, shipping_address=shipping_address, amount=total_price)
             for item in cart:
@@ -80,6 +89,18 @@ def complete_order(request):
                     quantity=item['quantity'],
                     user=request.user
                 )
+                session_data['line_items'].append({
+                    'product_data': {
+                        'id': str(uuid.uuid4()),
+                        'name': item['product'].name,
+                    },
+                    'unit_amount': int(item['price'] * Decimal(100)),
+                    'currency': 'USD',
+                    'quantity': item['quantity'],
+                }
+                )
+                session = stripe.checkout.Session.create(**session_data)
+                return redirect(session.url, code=303)
         else:
             order = Order.objects.create(shipping_address=shipping_address, amount=total_price)
             for item in cart:
