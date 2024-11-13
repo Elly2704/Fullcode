@@ -2,10 +2,11 @@ import uuid
 from decimal import Decimal
 
 import stripe
+#import weasyprint
 from django.conf import settings
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.templatetags.static import static
@@ -13,20 +14,19 @@ from django.urls import reverse
 
 
 from cart.cart import Cart
+
 from .forms import ShippingAddressForm
 from .models import Order, OrderItem, ShippingAddress
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.api_version = settings.STRIPE_API_VERSION
 
-
 @login_required(login_url='account:login')
 def shipping(request):
     try:
         shipping_address = ShippingAddress.objects.get(user=request.user)
-    except ShippingAddressForm.DoesNotExist:
+    except ShippingAddress.DoesNotExist:
         shipping_address = None
-
     form = ShippingAddressForm(instance=shipping_address)
 
     if request.method == 'POST':
@@ -36,20 +36,21 @@ def shipping(request):
             shipping_address.user = request.user
             shipping_address.save()
             return redirect('account:dashboard')
+
     return render(request, 'shipping/shipping.html', {'form': form})
 
 
 def checkout(request):
     if request.user.is_authenticated:
-        shipping_address = get_object_or_404(ShippingAddress, user=request.user)
-        if shipping_address:
-            return render(request, 'payment/checkout.html', {'shipping_address': shipping_address})
+        shipping_address, _ = ShippingAddress.objects.get_or_create(
+            user=request.user)
+        return render(request, 'payment/checkout.html', {'shipping_address': shipping_address})
     return render(request, 'payment/checkout.html')
 
 
 def complete_order(request):
     if request.method == 'POST':
-        payment_type = request.POST.get('stripe-payment', 'yookassa-payment')
+        payment_type = request.POST.get('stripe-payment')
 
         name = request.POST.get('name')
         email = request.POST.get('email')
@@ -77,8 +78,8 @@ def complete_order(request):
 
                 session_data = {
                     'mode': 'payment',
-                    'success_url': request.build_absolute_uri(reverse('payment:payment-success')),
-                    'cancel_url': request.build_absolute_uri(reverse('payment:payment-failed')),
+                    'success_url': request.build_absolute_uri(reverse('payment:payment_success')),
+                    'cancel_url': request.build_absolute_uri(reverse('payment:payment_fail')),
                     'line_items': []
                 }
 
@@ -88,7 +89,7 @@ def complete_order(request):
 
                     for item in cart:
                         OrderItem.objects.create(
-                            order=order, product=item['product'], price=item['price'], quantity=item['qty'],
+                            order=order, product=item['product'], price=item['price'], quantity=item['quantity'],
                             user=request.user)
 
                         session_data['line_items'].append({
@@ -99,7 +100,7 @@ def complete_order(request):
                                     'name': item['product']
                                 },
                             },
-                            'quantity': item['qty'],
+                            'quantity': item['quantity'],
                         })
                     session_data['client_reference_id'] = order.id
                     session = stripe.checkout.Session.create(**session_data)
@@ -111,7 +112,7 @@ def complete_order(request):
 
                     for item in cart:
                         OrderItem.objects.create(
-                            order=order, product=item['product'], price=item['price'], quantity=item['qty'])
+                            order=order, product=item['product'], price=item['price'], quantity=item['quantity'])
 
                         session_data['line_items'].append({
                             'price_data': {
@@ -121,7 +122,7 @@ def complete_order(request):
                                     'name': item['product']
                                 },
                             },
-                            'quantity': item['qty'],
+                            'quantity': item['quantity'],
                         })
                     session_data['client_reference_id'] = order.id
                     session = stripe.checkout.Session.create(**session_data)
@@ -130,9 +131,27 @@ def complete_order(request):
 
 def payment_success(request):
     for key in list(request.session.keys()):
-        del request.session[key]
+        if key == 'session_key':
+            del request.session[key]
     return render(request, 'payment/payment_success.html')
 
 
 def payment_fail(request):
     return render(request, 'payment/payment_fail.html')
+
+
+@staff_member_required
+def admin_order_pdf(request, order_id):
+    try:
+        order = Order.objects.select_related('user', 'shipping_address').get(id=order_id)
+    except Order.DoesNotExist:
+        raise Http404('Заказ не найден')
+    html = render_to_string('payment/order/pdf/pdf_invoice.html',
+                            {'order': order})
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'filename=order_{order.id}.pdf'
+    css_path = static('payment/css/pdf.css').lstrip('/')
+    # css_path = 'static/payment/css/pdf.css'
+    stylesheets = [weasyprint.CSS(css_path)]
+    weasyprint.HTML(string=html).write_pdf(response, stylesheets=stylesheets)
+    return response

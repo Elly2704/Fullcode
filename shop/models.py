@@ -10,17 +10,32 @@ def rand_slug():
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=255, db_index=True)
-    parent = models.ForeignKey('self', on_delete=models.CASCADE, related_name='children', blank=True, null=True)
-    slug = models.SlugField('URL', max_length=255, unique=True, null=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    """
+    Model representing a category.
+
+    Attributes:
+        name (str): The name of the category.
+        parent (Category): The parent category.
+        slug (str): The URL slug of the category.
+        created_at (datetime): The date and time of creation.
+
+    """
+    name = models.CharField("Категория", max_length=250, db_index=True)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, related_name='children', blank=True, null=True
+                               )
+    slug = models.SlugField('URL', max_length=250,
+                            unique=True, null=False, editable=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
 
     class Meta:
-        unique_together = ('slug', 'parent')
-        verbose_name = 'Category'
-        verbose_name_plural = 'Categories'
+        unique_together = (['slug', 'parent'])
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
 
     def __str__(self):
+        """
+        Returns a string representation of the object.
+        """
         full_path = [self.name]
         k = self.parent
         while k is not None:
@@ -29,12 +44,16 @@ class Category(models.Model):
         return ' > '.join(full_path[::-1])
 
     def save(self, *args, **kwargs):
+        """
+        Save the current instance to the database.
+        """
+
         if not self.slug:
             self.slug = slugify(rand_slug() + '-pickBetter' + self.name)
         super(Category, self).save(*args, **kwargs)
 
     def get_absolute_url(self):
-        return reverse('shop:category_list', args=[str(self.slug)])
+        return reverse("shop:category_list", args=[str(self.slug)])
 
 
 class Product(models.Model):

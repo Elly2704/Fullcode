@@ -3,6 +3,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Order
+from .tasks import send_order_confirmation
 
 #from .tasks import send_order_confirmation
 
