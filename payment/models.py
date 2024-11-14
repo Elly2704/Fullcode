@@ -71,18 +71,7 @@ class Order(models.Model):
     def get_absolute_url(self):
         return reverse("payment:order_detail", kwargs={"pk": self.pk})
 
-    def get_total_cost_before_discount(self):
-        return sum(item.get_cost() for item in self.items.all())
 
-    @property
-    def get_discount(self):
-        if (total_cost := self.get_total_cost_before_discount()) and self.discount:
-            return total_cost * (self.discount / Decimal(100))
-        return Decimal(0)
-
-    def get_total_cost(self):
-        total_cost = self.get_total_cost_before_discount()
-        return total_cost - self.get_discount
 
 
 class OrderItem(models.Model):
@@ -110,14 +99,3 @@ class OrderItem(models.Model):
     def get_cost(self):
         return self.price * self.quantity
 
-    @property
-    def total_cost(self):
-        return self.price * self.quantity
-
-    @classmethod
-    def get_total_quantity_for_product(cls, product):
-        return cls.objects.filter(product=product).aggregate(total_quantity=models.Sum('quantity'))['total_quantity'] or 0
-
-    @staticmethod
-    def get_average_price():
-        return OrderItem.objects.aggregate(average_price=models.Avg('price'))['average_price']
