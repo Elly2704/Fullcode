@@ -35,7 +35,7 @@ def cart_update(request):
 
         cart.update(product=product_id, quantity=product_qty)
 
-        cart_qty = cart.__len__()
+        cart_qty = len(cart)
         cart_total = cart.get_total_price()
 
         response = JsonResponse({'quantity': cart_qty, 'total': cart_total})
