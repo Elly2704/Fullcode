@@ -18,8 +18,10 @@ def register_user(request):
             user_password = form.cleaned_data.get('password1')
 
             #Create a new user
-            user = User.objects.create(username=user_username, email=user_email, password=user_password)
-            user.is_active = False
+            user = User(username=user_username, email=user_email)
+            user.set_password(user_password)  # Хэшируем пароль
+            user.is_active = False  # Делаем пользователя неактивным до подтверждения email
+            user.save()
 
             send_email(user)
             return redirect('/account/email_verification_sent/')

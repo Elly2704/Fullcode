@@ -1,0 +1,29 @@
+version: '3.10'
+
+services:
+  django_tst:
+    build: .
+    container_name: django_tst
+    ports:
+      - "8001:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DEBUG=True
+    depends_on:
+      - pgdb_tst
+
+  pgdb_tst:
+    image: postgres
+    container_name: pgdb_tst
+    environment:
+      POSTGRES_USER: fullcode
+      POSTGRES_PASSWORD: 12345678
+      POSTGRES_DB: fullcode
+    ports:
+      - "5433:5432"
+    volumes:
+     - pgdb_test:/var/lib/postgresql/data
+
+volumes:
+  pgdb_test:
